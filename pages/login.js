@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/router';
+import Cookies from 'js-cookie';  // Use js-cookie to easily get CSRF token from cookies
 
 export default function Login() {
   const [username, setUsername] = useState('');
@@ -9,14 +10,28 @@ export default function Login() {
   const [error, setError] = useState(null);
   const router = useRouter();
 
+  // Helper function to get the CSRF token from cookies
+  const getCSRFToken = () => {
+    return Cookies.get('csrftoken');  // Assuming Django sets the CSRF token in the 'csrftoken' cookie
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const csrftoken = getCSRFToken();  // Get CSRF token from cookies
     try {
-      const response = await axios.post('/api/token/', { username, password });
-      localStorage.setItem('token', response.data.access); // Salva il token JWT
-      router.push('/profile'); // Reindirizza alla pagina del profilo
+      const response = await axios.post(
+        'http://localhost:8000/login/', 
+        { username, password },
+        {
+          headers: {
+            'X-CSRFToken': csrftoken,  // Include the CSRF token in the request headers
+          }
+        }
+      );
+      localStorage.setItem('token', response.data.access); // Save the JWT token
+      router.push('/profile');  // Redirect to profile page
     } catch (err) {
-      setError('Credenziali non valide');
+      setError('Credenziali non valide');  // Set an error message for invalid credentials
     }
   };
 
